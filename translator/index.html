@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Português</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero__overlay"></div>
+      <div class="hero__content">
+        <h1>Aprender Português</h1>
+        <p>
+          Für Sibel, damit sie die beste Portugiesischsprecherin wird, die ich je kennengelernt habe.
+        </p>
+        <button id="startLesson" class="primary-button">Los geht's!</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="card" id="dailyPhrase">
+        <h2>Täglicher Lieblingssatz</h2>
+        <div class="daily-phrase__content">
+          <p class="daily-phrase__portuguese" id="dailyPortuguese"></p>
+          <p class="daily-phrase__phonetic" id="dailyPhonetic"></p>
+          <p class="daily-phrase__german" id="dailyGerman"></p>
+          <div class="daily-phrase__actions">
+            <button id="playDaily" class="icon-button" title="Anhören">
+              🔊 anhören
+            </button>
+            <button id="favoriteDaily" class="icon-button" title="Merken">
+              ⭐ merken
+            </button>
+          </div>
+        </div>
+      </section>
+      <section class="card" id="speakLab">
+        <div class="section-header">
+          <h2>Sprich es laut</h2>
+          <span class="section-subtitle">Schreibe deinen Satz und hoere die portugiesische Aussprache.</span>
+        </div>
+        <div class="speak-lab">
+          <label class="speak-lab__field" for="customText">
+            <span class="speak-lab__label">Dein Satz</span>
+            <textarea id="customText" rows="4" placeholder="Escreve aqui..."></textarea>
+          </label>
+          <div class="speak-lab__actions">
+            <button id="speakCustom" class="primary-button">Vorlesen</button>
+            <p class="speak-lab__hint">Tipp: Schreibe auf Portugiesisch fuer die beste Aussprache.</p>
+          </div>
+          <p class="speak-lab__status" id="speakStatus" aria-live="polite"></p>
+        </div>
+      </section>
+      <section class="card" id="favorites">
+        <div class="section-header">
+          <h2>Lieblingssätze</h2>
+          <span class="section-subtitle">Für schnelles Wiederholen</span>
+        </div>
+        <div id="favoriteList" class="phrase-list empty-state">
+          Noch keine Favoriten. Tippe auf ⭐, um Sätze zu speichern.
+        </div>
+      </section>
+
+      <section class="card" id="phraseExplorer">
+        <div class="section-header">
+          <h2>Satz-Bibliothek</h2>
+          <span class="section-subtitle"
+            >Wähle eine Kategorie oder suche nach einem Stichwort.</span
+          >
+        </div>
+        <div class="toolbar">
+          <label class="toolbar__field">
+            <span class="toolbar__label">Suche</span>
+            <input
+              type="search"
+              id="searchInput"
+              placeholder="z. B. Kaffee, Bahnhof, Danke"
+            />
+          </label>
+          <label class="toolbar__field">
+            <span class="toolbar__label">Kategorie</span>
+            <select id="categoryFilter"></select>
+          </label>
+        </div>
+        <div id="phraseList" class="phrase-list"></div>
+      </section>
+
+      <section class="card" id="flashcards">
+        <div class="section-header">
+          <h2>Flashcards</h2>
+          <span class="section-subtitle"
+            >Portugiesisch merken – ohne zu pauken.</span
+          >
+        </div>
+        <div class="flashcard" id="flashcard">
+          <p class="flashcard__category" id="flashcardCategory"></p>
+          <p class="flashcard__portuguese" id="flashcardPortuguese"></p>
+          <p class="flashcard__phonetic" id="flashcardPhonetic"></p>
+          <p class="flashcard__german" id="flashcardGerman"></p>
+        </div>
+        <div class="flashcard__actions">
+          <button id="flashcardReveal" class="secondary-button">
+            Übersetzung anzeigen
+          </button>
+          <button id="flashcardKnown" class="primary-button">
+            Kann ich schon
+          </button>
+          <button id="flashcardNext" class="icon-button">Weiter ➜</button>
+        </div>
+        <p class="progress" id="flashcardProgress"></p>
+      </section>
+
+      <section class="card" id="quiz">
+        <div class="section-header">
+          <h2>Mini-Quiz</h2>
+          <span class="section-subtitle"
+            >Wähle die richtige Übersetzung und sammle Punkte.</span
+          >
+        </div>
+        <div class="quiz__question" id="quizQuestion"></div>
+        <div class="quiz__options" id="quizOptions"></div>
+        <p class="quiz__feedback" id="quizFeedback"></p>
+        <button id="nextQuiz" class="secondary-button">Neue Frage</button>
+        <p class="progress" id="quizScore"></p>
+      </section>
+
+      <section class="card" id="grammarTips">
+        <div class="section-header">
+          <h2>Mini-Grammatik</h2>
+          <span class="section-subtitle"
+            >Kleine Nuggets – schnell gelesen, sofort genutzt.</span
+          >
+        </div>
+        <ul id="grammarList" class="grammar-list"></ul>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <p>
+        Von HUGO mit Liebe – Europäisches Portugiesisch, gemacht für meine Sibel.
+      </p>
+    </footer>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
+
