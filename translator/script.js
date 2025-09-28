@@ -233,6 +233,7 @@ const flashcardDeck = phrases.filter((phrase) => !['ate-ja'].includes(phrase.id)
 
 const favoritesKey = 'pt-pt-favorites';
 const knownKey = 'pt-pt-known';
+const plannerKey = 'pt-pt-planner';
 
 const state = {
   favorites: loadSet(favoritesKey),
@@ -301,16 +302,15 @@ const elements = {
   nextQuiz: document.getElementById('nextQuiz'),
   quizScore: document.getElementById('quizScore'),
   grammarList: document.getElementById('grammarList'),
-  customText: document.getElementById('customText'),
-  speakCustom: document.getElementById('speakCustom'),
-  speakStatus: document.getElementById('speakStatus'),
+  goalInput: document.getElementById('goalInput'),
+  minutesInput: document.getElementById('minutesInput'),
+  saveProgress: document.getElementById('saveProgress'),
+  plannerFeedback: document.getElementById('plannerFeedback'),
+  streakInfo: document.getElementById('streakInfo'),
 };
 
 let currentDailyPhrase = null;
 let flashcardOrder = shuffle(flashcardDeck.map((p) => p.id));
-let cachedPortugueseVoice = null;
-let isSpeechPrimed = false;
-let speechPrimePromise = null;
 
 function displayDailyPhrase() {
   currentDailyPhrase = pickRandom(phrases);
@@ -336,189 +336,14 @@ function speakPortuguese(text) {
   utterance.lang = 'pt-PT';
   utterance.rate = 1;
   utterance.pitch = 1;
-  const voice = getPortugueseVoice();
+  const voice = speechSynthesis
+    .getVoices()
+    .find((v) => v.lang === 'pt-PT' || v.lang === 'pt_PT');
   if (voice) {
     utterance.voice = voice;
   }
   speechSynthesis.cancel();
   speechSynthesis.speak(utterance);
-  return utterance;
-}
-
-function getPortugueseVoice() {
-  if (!('speechSynthesis' in window)) {
-    return null;
-  }
-
-  const voices = speechSynthesis.getVoices();
-  if (cachedPortugueseVoice) {
-    const stillAvailable = voices.some(
-      (voice) =>
-        voice.name === cachedPortugueseVoice.name && voice.lang === cachedPortugueseVoice.lang
-    );
-    if (stillAvailable) {
-      return cachedPortugueseVoice;
-    }
-  }
-
-  cachedPortugueseVoice =
-    voices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith('pt')) || null;
-
-  return cachedPortugueseVoice;
-}
-
-
-
-function speakPortugueseAfterPrime(text) {
-  return primeSpeechSynthesis().then(() => speakPortuguese(text));
-}
-
-function setupSpeakLab() {
-  if (!elements.customText || !elements.speakCustom) {
-    return;
-  }
-
-  const speakStatus = elements.speakStatus;
-  const updateStatus = (message) => {
-    if (!speakStatus) return;
-    speakStatus.textContent = message;
-  };
-
-  const isSpeechSupported =
-    'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
-
-  if (!isSpeechSupported) {
-    elements.speakCustom.disabled = true;
-    updateStatus('Sprachausgabe wird von diesem Browser nicht unterstuetzt.');
-    return;
-  }
-
-  const hasPortugueseVoice = () => Boolean(getPortugueseVoice());
-
-  primeSpeechSynthesis().then(() => {
-    if (speakStatus && !speakStatus.textContent) {
-      updateStatus('Bereit zum Vorlesen!');
-    }
-  });
-
-  const handleSpeak = () => {
-    const textToSpeak = elements.customText.value.trim();
-    if (!textToSpeak) {
-      updateStatus('Schreibe zuerst einen Satz.');
-      elements.customText.focus();
-      return;
-    }
-
-    updateStatus('Wird vorgelesen ...');
-    speakPortugueseAfterPrime(textToSpeak).then((utterance) => {
-      if (utterance) {
-        utterance.onend = () => updateStatus('Bereit fuer den naechsten Satz!');
-        utterance.onerror = () => updateStatus('Sprachausgabe leider fehlgeschlagen.');
-      }
-    });
-  };
-
-  elements.speakCustom.addEventListener('click', (event) => {
-    event.preventDefault();
-    handleSpeak();
-  });
-
-  elements.customText.addEventListener('keydown', (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-      event.preventDefault();
-      handleSpeak();
-    }
-  });
-
-  if (!hasPortugueseVoice()) {
-    const handleVoicesChanged = () => {
-      if (hasPortugueseVoice()) {
-        updateStatus('Portugiesische Stimme geladen.');
-        window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-      }
-    };
-
-    window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
-  }
-}
-
-
-function primeSpeechSynthesis() {
-  if (!('speechSynthesis' in window)) {
-    isSpeechPrimed = true;
-    return Promise.resolve();
-  }
-
-  if (isSpeechPrimed) {
-    return Promise.resolve();
-  }
-
-  if (speechPrimePromise) {
-    return speechPrimePromise;
-  }
-
-  speechPrimePromise = new Promise((resolve) => {
-    let resolved = false;
-
-    const markReady = () => {
-      if (resolved) return;
-      resolved = true;
-      isSpeechPrimed = true;
-      resolve();
-    };
-
-    const warmup = () => {
-      if (isSpeechPrimed) {
-        markReady();
-        return;
-      }
-
-      const utterance = new SpeechSynthesisUtterance(' ');
-      const voice = getPortugueseVoice();
-      utterance.volume = 0;
-      utterance.rate = 1;
-      utterance.pitch = 1;
-      utterance.lang = voice && voice.lang ? voice.lang : 'pt-PT';
-      if (voice) {
-        utterance.voice = voice;
-      }
-
-      const fallbackTimer = setTimeout(markReady, 1200);
-      const handleFinish = () => {
-        clearTimeout(fallbackTimer);
-        markReady();
-      };
-
-      utterance.onend = handleFinish;
-      utterance.onerror = handleFinish;
-
-      try {
-        speechSynthesis.speak(utterance);
-      } catch (error) {
-        clearTimeout(fallbackTimer);
-        markReady();
-      }
-    };
-
-    const voices = speechSynthesis.getVoices();
-    if (voices.length > 0) {
-      warmup();
-    } else {
-      const handleVoices = () => {
-        speechSynthesis.removeEventListener('voiceschanged', handleVoices);
-        warmup();
-      };
-
-      speechSynthesis.addEventListener('voiceschanged', handleVoices);
-      setTimeout(() => {
-        if (!isSpeechPrimed) {
-          warmup();
-        }
-      }, 800);
-    }
-  });
-
-  return speechPrimePromise;
 }
 
 function initCategoryFilter() {
@@ -638,7 +463,7 @@ function setupPhraseListEvents() {
     if (!phrase) return;
 
     if (event.target.closest('.js-speak')) {
-      speakPortugueseAfterPrime(phrase.portuguese);
+      speakPortuguese(phrase.portuguese);
     }
 
     if (event.target.closest('.js-favorite')) {
@@ -654,7 +479,7 @@ function setupPhraseListEvents() {
     if (!phrase) return;
 
     if (event.target.closest('.js-speak')) {
-      speakPortugueseAfterPrime(phrase.portuguese);
+      speakPortuguese(phrase.portuguese);
     }
 
     if (event.target.closest('.js-favorite')) {
@@ -722,7 +547,7 @@ function renderGrammarTips() {
 function setupDailyPhraseActions() {
   elements.playDaily.addEventListener('click', () => {
     if (currentDailyPhrase) {
-      speakPortugueseAfterPrime(currentDailyPhrase.portuguese);
+      speakPortuguese(currentDailyPhrase.portuguese);
     }
   });
 
@@ -791,8 +616,82 @@ function setupQuiz() {
   });
 }
 
+function loadPlanner() {
+  try {
+    const raw = localStorage.getItem(plannerKey);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data.goal) {
+      elements.goalInput.value = data.goal;
+    }
+    if (data.today) {
+      elements.minutesInput.value = data.today;
+    }
+    if (data.streak) {
+      elements.streakInfo.textContent = `Aktuelle Serie: ${data.streak} Tag(e).`;
+    }
+  } catch (error) {
+    console.error('Planner konnte nicht geladen werden', error);
+  }
+}
+
+function savePlanner(goal, todayMinutes) {
+  try {
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10);
+    const stored = JSON.parse(localStorage.getItem(plannerKey) || '{}');
+    const previousDate = stored?.lastDate;
+    let streak = stored?.streak || 0;
+
+    if (stored.lastDate === todayKey) {
+      streak = stored.streak || 0;
+    } else if (previousDate) {
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const yesterdayKey = yesterday.toISOString().slice(0, 10);
+      if (previousDate === yesterdayKey) {
+        streak += 1;
+      } else {
+        streak = todayMinutes >= goal ? 1 : 0;
+      }
+    } else {
+      streak = todayMinutes >= goal ? 1 : 0;
+    }
+
+    const payload = {
+      goal,
+      today: todayMinutes,
+      streak,
+      lastDate: todayKey,
+    };
+
+    localStorage.setItem(plannerKey, JSON.stringify(payload));
+    elements.streakInfo.textContent = `Aktuelle Serie: ${payload.streak} Tag(e).`;
+  } catch (error) {
+    console.error('Planner konnte nicht gespeichert werden', error);
+  }
+}
+
+function setupPlanner() {
+  loadPlanner();
+  elements.saveProgress.addEventListener('click', () => {
+    const goal = Number(elements.goalInput.value || 0);
+    const todayMinutes = Number(elements.minutesInput.value || 0);
+    if (!goal || goal < 5) {
+      elements.plannerFeedback.textContent = 'Setze ein realistisch erreichbares Ziel (mind. 5 Minuten).';
+      return;
+    }
+    savePlanner(goal, todayMinutes);
+    if (todayMinutes >= goal) {
+      elements.plannerFeedback.textContent = 'Fantástico! Du hast dein Ziel erreicht.';
+    } else {
+      const diff = goal - todayMinutes;
+      elements.plannerFeedback.textContent = `Es fehlen nur ${diff} Minute(n). Kleiner Spaziergang mit Kopfhörern?`;
+    }
+  });
+}
+
 function init() {
-  primeSpeechSynthesis();
   displayDailyPhrase();
   initCategoryFilter();
   renderPhraseList();
@@ -808,30 +707,715 @@ function init() {
   elements.flashcardNext.addEventListener('click', goToNextFlashcard);
   renderGrammarTips();
   setupQuiz();
-  setupSpeakLab();
+  setupPlanner();
   elements.searchInput.addEventListener('input', renderPhraseList);
   elements.categoryFilter.addEventListener('change', renderPhraseList);
 }
 
 document.addEventListener('DOMContentLoaded', init);
+(function () {
+  if (typeof elements !== 'object') {
+    return;
+  }
 
+  elements.customText = document.getElementById('customText');
+  elements.speakCustom = document.getElementById('speakCustom');
+  elements.speakStatus = document.getElementById('speakStatus');
+  elements.trainerPhrase = document.getElementById('trainerPhrase');
+  elements.trainerPhonetic = document.getElementById('trainerPhonetic');
+  elements.trainerGerman = document.getElementById('trainerGerman');
+  elements.trainerPlay = document.getElementById('trainerPlay');
+  elements.trainerListen = document.getElementById('trainerListen');
+  elements.trainerSkip = document.getElementById('trainerSkip');
+  elements.trainerStatus = document.getElementById('trainerStatus');
+  elements.challengeSubtitle = document.getElementById('challengeSubtitle');
+  elements.challengePrompt = document.getElementById('challengePrompt');
+  elements.challengePortuguese = document.getElementById('challengePortuguese');
+  elements.challengePhonetic = document.getElementById('challengePhonetic');
+  elements.challengeGerman = document.getElementById('challengeGerman');
+  elements.challengeOptions = document.getElementById('challengeOptions');
+  elements.challengeAction = document.getElementById('challengeAction');
+  elements.challengeRefresh = document.getElementById('challengeRefresh');
+  elements.challengeComplete = document.getElementById('challengeComplete');
+  elements.challengeStatus = document.getElementById('challengeStatus');
+  elements.challengeContent = document.getElementById('challengeContent');
 
+  let cachedPortugueseVoice = null;
+  let isSpeechPrimed = false;
+  let speechPrimePromise = null;
+  const microphonePermissionState = { granted: false, promise: null };
 
+  const trainerState = {
+    recognitionSupported: 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window,
+    currentPhrase: null,
+    isListening: false,
+    lastResultHandled: false,
+    activeRecognition: null,
+  };
 
+  const challengeState = {
+    todayKey: new Date().toISOString().slice(0, 10),
+    seedOffset: 0,
+    completed: false,
+    current: null,
+  };
 
+  const challengeStorageKey = 'pt-pt-daily-challenge';
+  const challengeTypes = ['pronounce', 'quiz'];
 
+  const originalSpeakPortuguese = typeof window.speakPortuguese === 'function' ? window.speakPortuguese : null;
+  function getPortugueseVoice() {
+    if (!('speechSynthesis' in window)) {
+      return null;
+    }
+    const voices = speechSynthesis.getVoices();
+    if (cachedPortugueseVoice) {
+      const stillAvailable = voices.some((voice) => voice.lang === cachedPortugueseVoice.lang && voice.name === cachedPortugueseVoice.name);
+      if (stillAvailable) {
+        return cachedPortugueseVoice;
+      }
+    }
+    cachedPortugueseVoice = voices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith('pt')) || null;
+    return cachedPortugueseVoice;
+  }
 
+  function speakPortugueseEnhanced(text) {
+    if (!('speechSynthesis' in window)) {
+      if (originalSpeakPortuguese) {
+        return originalSpeakPortuguese(text);
+      }
+      alert('Sprachausgabe wird von diesem Browser nicht unterstuetzt.');
+      return null;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'pt-PT';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    const voice = getPortugueseVoice();
+    if (voice) {
+      utterance.voice = voice;
+    }
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+    return utterance;
+  }
 
+  window.speakPortuguese = speakPortugueseEnhanced;
 
+  function primeSpeechSynthesis() {
+    if (!('speechSynthesis' in window)) {
+      isSpeechPrimed = true;
+      return Promise.resolve();
+    }
+    if (isSpeechPrimed) {
+      return Promise.resolve();
+    }
+    if (speechPrimePromise) {
+      return speechPrimePromise;
+    }
 
+    speechPrimePromise = new Promise((resolve) => {
+      let resolved = false;
 
+      const markReady = () => {
+        if (resolved) return;
+        resolved = true;
+        isSpeechPrimed = true;
+        resolve();
+      };
 
+      const warmup = () => {
+        if (isSpeechPrimed) {
+          markReady();
+          return;
+        }
+        const utterance = new SpeechSynthesisUtterance(' ');
+        const voice = getPortugueseVoice();
+        utterance.volume = 0;
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        utterance.lang = voice && voice.lang ? voice.lang : 'pt-PT';
+        if (voice) {
+          utterance.voice = voice;
+        }
+        const timer = setTimeout(markReady, 1200);
+        const finish = () => {
+          clearTimeout(timer);
+          markReady();
+        };
+        utterance.onend = finish;
+        utterance.onerror = finish;
+        try {
+          speechSynthesis.speak(utterance);
+        } catch (error) {
+          clearTimeout(timer);
+          markReady();
+        }
+      };
 
+      const voices = speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        warmup();
+      } else {
+        const handleVoicesChanged = () => {
+          speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+          warmup();
+        };
+        speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+        setTimeout(() => {
+          if (!isSpeechPrimed) {
+            warmup();
+          }
+        }, 800);
+      }
+    });
 
+    return speechPrimePromise;
+  }
 
+  function speakPortugueseAfterPrime(text) {
+    return primeSpeechSynthesis().then(() => speakPortugueseEnhanced(text));
+  }
 
+  function ensureMicrophonePermission() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return Promise.resolve();
+    }
+    if (microphonePermissionState.granted) {
+      return Promise.resolve();
+    }
+    if (microphonePermissionState.promise) {
+      return microphonePermissionState.promise;
+    }
+    microphonePermissionState.promise = navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        microphonePermissionState.granted = true;
+        if (stream && typeof stream.getTracks === 'function') {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      })
+      .catch((error) => {
+        microphonePermissionState.granted = false;
+        throw error;
+      })
+      .finally(() => {
+        microphonePermissionState.promise = null;
+      });
+    return microphonePermissionState.promise;
+  }
 
+  function setupSpeakLab() {
+    if (!elements.customText || !elements.speakCustom) {
+      return;
+    }
 
+    const setStatus = (message, tone) => {
+      if (!elements.speakStatus) return;
+      elements.speakStatus.textContent = message || '';
+      elements.speakStatus.classList.remove('is-good', 'is-warning', 'is-error');
+      if (tone) {
+        elements.speakStatus.classList.add(tone);
+      }
+    };
 
+    const handleSpeak = () => {
+      const value = elements.customText.value.trim();
+      if (!value) {
+        setStatus('Schreibe zuerst einen Satz.', 'is-warning');
+        elements.customText.focus();
+        return;
+      }
+      setStatus('Wird vorgelesen ...', '');
+      speakPortugueseAfterPrime(value).then((utterance) => {
+        if (utterance) {
+          utterance.onend = () => setStatus('Bereit fuer den naechsten Satz!', 'is-good');
+          utterance.onerror = () => setStatus('Sprachausgabe leider fehlgeschlagen.', 'is-error');
+        }
+      });
+    };
 
+    elements.speakCustom.addEventListener('click', (event) => {
+      event.preventDefault();
+      handleSpeak();
+    });
 
+    elements.customText.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        handleSpeak();
+      }
+    });
+
+    primeSpeechSynthesis().then(() => {
+      if (elements.speakStatus && !elements.speakStatus.textContent) {
+        setStatus('Bereit zum Vorlesen!', '');
+      }
+    });
+  }
+
+  function selectTrainerPhrase(previousId) {
+    if (!phrases.length) {
+      return null;
+    }
+    let candidate = pickRandom(phrases);
+    if (previousId && phrases.length > 1) {
+      let attempts = 0;
+      while (candidate.id === previousId && attempts < 10) {
+        candidate = pickRandom(phrases);
+        attempts += 1;
+      }
+    }
+    return candidate;
+  }
+
+  function setTrainerPhrase(phrase) {
+    if (!phrase || !elements.trainerPhrase) {
+      return;
+    }
+    trainerState.currentPhrase = phrase;
+    elements.trainerPhrase.textContent = phrase.portuguese;
+    elements.trainerPhonetic.textContent = phrase.phonetic || '';
+    elements.trainerGerman.textContent = phrase.german || '';
+  }
+
+  function normalizeUtteranceText(value) {
+    return (value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function calculatePronunciationScore(expected, attempt) {
+    const expectedWords = normalizeUtteranceText(expected).split(' ').filter(Boolean);
+    const attemptWords = normalizeUtteranceText(attempt).split(' ').filter(Boolean);
+    if (!expectedWords.length || !attemptWords.length) {
+      return 0;
+    }
+    let matches = 0;
+    const attemptCopy = [...attemptWords];
+    expectedWords.forEach((word) => {
+      const index = attemptCopy.indexOf(word);
+      if (index > -1) {
+        matches += 1;
+        attemptCopy.splice(index, 1);
+      }
+    });
+    const precision = matches / attemptWords.length;
+    const recall = matches / expectedWords.length;
+    if (!Number.isFinite(precision) || !Number.isFinite(recall) || matches === 0) {
+      return 0;
+    }
+    const f1 = (2 * precision * recall) / (precision + recall);
+    if (!Number.isFinite(f1)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(100, Math.round(f1 * 100)));
+  }
+
+  function evaluatePronunciation(expected, attempts) {
+    if (!attempts || !attempts.length) {
+      return { score: 0, transcript: '' };
+    }
+    return attempts.reduce(
+      (best, attempt) => {
+        const score = calculatePronunciationScore(expected, attempt);
+        if (score > best.score) {
+          return { score, transcript: attempt };
+        }
+        return best;
+      },
+      { score: 0, transcript: attempts[0] || '' }
+    );
+  }
+
+  function updateTrainerStatus(message, tone) {
+    if (!elements.trainerStatus) return;
+    elements.trainerStatus.textContent = message || '';
+    elements.trainerStatus.classList.remove('is-good', 'is-warning', 'is-error');
+    if (tone) {
+      elements.trainerStatus.classList.add(tone);
+    }
+  }
+
+  function startTrainerListening() {
+    if (trainerState.isListening) {
+      return;
+    }
+    if (!trainerState.recognitionSupported) {
+      updateTrainerStatus('Aufnahme wird von diesem Browser nicht unterstuetzt.', 'is-warning');
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      updateTrainerStatus('Aufnahme wird von diesem Browser nicht unterstuetzt.', 'is-warning');
+      return;
+    }
+    if (trainerState.activeRecognition) {
+      try {
+        trainerState.activeRecognition.stop();
+      } catch (error) {
+        // ignore
+      }
+    }
+
+    const restoreButton = () => {
+      if (elements.trainerListen) {
+        elements.trainerListen.disabled = false;
+        elements.trainerListen.textContent = 'Aufnehmen';
+      }
+    };
+
+    const beginRecognition = () => {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'pt-PT';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 3;
+      trainerState.isListening = true;
+      trainerState.lastResultHandled = false;
+      trainerState.activeRecognition = recognition;
+      if (elements.trainerListen) {
+        elements.trainerListen.disabled = true;
+        elements.trainerListen.textContent = 'Hoeren ...';
+      }
+      updateTrainerStatus('Wir hoeren genau hin ...', '');
+      recognition.onresult = (event) => {
+        trainerState.isListening = false;
+        trainerState.lastResultHandled = true;
+        trainerState.activeRecognition = null;
+        restoreButton();
+        const transcripts = [];
+        for (let i = 0; i < event.results.length; i += 1) {
+          const result = event.results[i];
+          for (let j = 0; j < result.length; j += 1) {
+            transcripts.push(result[j].transcript.trim());
+          }
+        }
+        const expected = trainerState.currentPhrase ? trainerState.currentPhrase.portuguese : '';
+        const evaluation = evaluatePronunciation(expected, transcripts);
+        let tone = 'is-error';
+        let feedback = `Noch nicht ganz (${evaluation.score}%). Versuche es gleich nochmal.`;
+        if (evaluation.score >= 85) {
+          tone = 'is-good';
+          feedback = `Fantastico! ${evaluation.score}% Treffer. Erkannt: "${evaluation.transcript}"`;
+        } else if (evaluation.score >= 60) {
+          tone = 'is-warning';
+          feedback = `Schon nah dran (${evaluation.score}%). Hoere dir den Satz noch einmal an.`;
+        }
+        updateTrainerStatus(feedback, tone);
+        const isPronounceChallenge =
+          challengeState.current &&
+          challengeState.current.type === 'pronounce' &&
+          trainerState.currentPhrase &&
+          challengeState.current.phraseId === trainerState.currentPhrase.id;
+        if (evaluation.score >= 85 && isPronounceChallenge && !challengeState.completed) {
+          markChallengeCompleted('Challenge gemeistert! Muito bem!');
+        }
+      };
+      recognition.onerror = (event) => {
+        trainerState.isListening = false;
+        trainerState.activeRecognition = null;
+        const errorType = event && event.error ? event.error : '';
+        if (errorType === 'not-allowed') {
+          updateTrainerStatus('Mikrofonzugriff verweigert. Bitte erlauben und erneut versuchen.', 'is-error');
+        } else if (errorType === 'no-speech') {
+          updateTrainerStatus('Keine Stimme erkannt. Versuch es nochmal.', 'is-warning');
+        } else {
+          updateTrainerStatus('Aufnahme fehlgeschlagen. Bitte erneut versuchen.', 'is-error');
+        }
+        restoreButton();
+      };
+      recognition.onend = () => {
+        const wasHandled = trainerState.lastResultHandled;
+        trainerState.isListening = false;
+        trainerState.activeRecognition = null;
+        if (!wasHandled) {
+          updateTrainerStatus('Keine Stimme erkannt. Versuch es nochmal.', 'is-warning');
+        }
+        restoreButton();
+      };
+      try {
+        recognition.start();
+      } catch (error) {
+        trainerState.isListening = false;
+        trainerState.activeRecognition = null;
+        updateTrainerStatus('Aufnahme konnte nicht gestartet werden.', 'is-error');
+        restoreButton();
+      }
+    };
+
+    if (elements.trainerListen) {
+      elements.trainerListen.disabled = true;
+      elements.trainerListen.textContent = microphonePermissionState.granted ? 'Hoeren ...' : 'Mikro wird geweckt...';
+    }
+
+    if (!microphonePermissionState.granted) {
+      updateTrainerStatus('Mikrofon wird vorbereitet ...', '');
+    }
+
+    ensureMicrophonePermission()
+      .then(() => {
+        beginRecognition();
+      })
+      .catch((error) => {
+        trainerState.isListening = false;
+        trainerState.activeRecognition = null;
+        if (error && (error.name === 'NotAllowedError' || error.name === 'SecurityError')) {
+          updateTrainerStatus('Bitte erlaube den Mikrofonzugriff im Browser und versuche es erneut.', 'is-error');
+        } else {
+          updateTrainerStatus('Mikrofon konnte nicht aktiviert werden.', 'is-error');
+        }
+        restoreButton();
+      });
+  }
+
+  function setupPronunciationTrainer() {
+    if (!elements.trainerPhrase) {
+      return;
+    }
+    const initial = selectTrainerPhrase();
+    if (initial) {
+      setTrainerPhrase(initial);
+    }
+    updateTrainerStatus('Bereit fuer deine Stimme. Druecke Aufnehmen.', '');
+    if (elements.trainerListen) {
+      elements.trainerListen.disabled = !trainerState.recognitionSupported;
+      elements.trainerListen.textContent = 'Aufnehmen';
+    }
+    if (!trainerState.recognitionSupported) {
+      updateTrainerStatus('Aufnahme wird von diesem Browser nicht unterstuetzt.', 'is-warning');
+    }
+    elements.trainerPlay?.addEventListener('click', () => {
+      if (!trainerState.currentPhrase) {
+        return;
+      }
+      speakPortugueseAfterPrime(trainerState.currentPhrase.portuguese);
+    });
+    elements.trainerListen?.addEventListener('click', () => {
+      startTrainerListening();
+    });
+    elements.trainerSkip?.addEventListener('click', () => {
+      if (trainerState.isListening && trainerState.activeRecognition) {
+        try {
+          trainerState.activeRecognition.stop();
+        } catch (error) {
+          // ignore
+        }
+      }
+      const currentId = trainerState.currentPhrase ? trainerState.currentPhrase.id : null;
+      const nextPhrase = selectTrainerPhrase(currentId);
+      if (nextPhrase) {
+        setTrainerPhrase(nextPhrase);
+        updateTrainerStatus('Neue Uebung bereit. Hoere zu und sprich nach!', '');
+      }
+    });
+  }
+
+  function getStringHash(value) {
+    return Array.from(value || '').reduce((acc, char) => {
+      return (acc * 31 + char.charCodeAt(0)) & 0x7fffffff;
+    }, 7);
+  }
+
+  function updateChallengeStatus(message, tone) {
+    if (!elements.challengeStatus) return;
+    elements.challengeStatus.textContent = message || '';
+    elements.challengeStatus.classList.remove('is-good', 'is-warning', 'is-error');
+    if (tone) {
+      elements.challengeStatus.classList.add(tone);
+    }
+  }
+
+  function renderPronounceChallenge(baseHash) {
+    const phraseIndex = (baseHash + challengeState.seedOffset * 13) % phrases.length;
+    const phrase = phrases[phraseIndex];
+    challengeState.current = { type: 'pronounce', phraseId: phrase ? phrase.id : null };
+    elements.challengeSubtitle.textContent = 'Sprich diesen Satz laut aus.';
+    elements.challengePrompt.textContent = 'Hoere dir den Satz an und uebe ihn im Wiederhol-Trainer.';
+    elements.challengePortuguese.textContent = phrase ? phrase.portuguese : '';
+    elements.challengePhonetic.textContent = phrase ? phrase.phonetic : '';
+    elements.challengeGerman.textContent = phrase ? phrase.german : '';
+    if (elements.challengeGerman) { elements.challengeGerman.classList.remove('is-hidden'); }
+    if (elements.challengeOptions) {
+      elements.challengeOptions.innerHTML = '';
+      elements.challengeOptions.classList.add('is-hidden');
+    }
+    if (elements.challengeAction) {
+      elements.challengeAction.classList.remove('is-hidden');
+      elements.challengeAction.textContent = 'Im Trainer ueben';
+      elements.challengeAction.disabled = false;
+      elements.challengeAction.onclick = () => {
+        if (!phrase) {
+          return;
+        }
+        setTrainerPhrase(phrase);
+        speakPortugueseAfterPrime(phrase.portuguese);
+        updateTrainerStatus('Hoere zu und sprich nach!', '');
+        const trainerSection = document.getElementById('pronunciationTrainer');
+        if (trainerSection) {
+          trainerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      };
+    }
+  }
+
+  function renderQuizChallenge(baseHash) {
+    const phraseIndex = (baseHash + challengeState.seedOffset * 17) % phrases.length;
+    const phrase = phrases[phraseIndex];
+    challengeState.current = { type: 'quiz', phraseId: phrase ? phrase.id : null };
+    elements.challengeSubtitle.textContent = 'Mini-Quiz fuer unterwegs.';
+    elements.challengePrompt.textContent = 'Welche Uebersetzung passt am besten?';
+    elements.challengePortuguese.textContent = phrase ? phrase.portuguese : '';
+    elements.challengePhonetic.textContent = phrase ? phrase.phonetic : '';
+    elements.challengeGerman.textContent = '';
+    if (elements.challengeGerman) { elements.challengeGerman.classList.add('is-hidden'); }
+    if (elements.challengeAction) {
+      elements.challengeAction.classList.add('is-hidden');
+      elements.challengeAction.onclick = null;
+    }
+    if (elements.challengeOptions) {
+      elements.challengeOptions.classList.remove('is-hidden');
+      elements.challengeOptions.innerHTML = '';
+      const pool = phrases.filter((entry) => entry.id !== (phrase ? phrase.id : null));
+      const distractors = shuffle(pool).slice(0, 2);
+      const options = shuffle([
+        { text: phrase ? phrase.german : '', correct: true },
+        ...distractors.map((item) => ({ text: item.german, correct: false })),
+      ]);
+      const buttons = [];
+      options.forEach((option) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'challenge__option';
+        button.textContent = option.text;
+        button.dataset.correct = option.correct ? 'true' : 'false';
+        button.addEventListener('click', () => {
+          if (buttons.some((item) => item.disabled)) {
+            return;
+          }
+          buttons.forEach((item) => {
+            item.disabled = true;
+            if (item.dataset.correct === 'true') {
+              item.classList.add('is-correct');
+            } else {
+              item.classList.add('is-incorrect');
+            }
+          });
+          if (option.correct) {
+            markChallengeCompleted('Richtig! Challenge geschafft.');
+          } else {
+            updateChallengeStatus('Fast! Hoere dir den Satz nochmal an und versuche es erneut.', 'is-warning');
+          }
+        });
+        elements.challengeOptions.appendChild(button);
+        buttons.push(button);
+      });
+    }
+  }
+
+  function renderDailyChallenge() {
+    if (!elements.challengeContent) {
+      return;
+    }
+    if (!phrases.length) {
+      elements.challengeSubtitle.textContent = 'Keine Daten verfuegbar';
+      elements.challengePrompt.textContent = 'Fuelle zuerst ein paar Saetze hinzu.';
+      updateChallengeStatus('', '');
+      return;
+    }
+    const baseHash = getStringHash(`${challengeState.todayKey}:${challengeState.seedOffset}`);
+    const type = challengeTypes[(baseHash + challengeState.seedOffset) % challengeTypes.length];
+    if (type === 'pronounce') {
+      renderPronounceChallenge(baseHash);
+    } else {
+      renderQuizChallenge(baseHash);
+    }
+    if (challengeState.completed) {
+      updateChallengeStatus('Challenge bereits erledigt. Stark!', 'is-good');
+    } else {
+      updateChallengeStatus('', '');
+    }
+    if (elements.challengeComplete) {
+      elements.challengeComplete.disabled = challengeState.completed;
+      elements.challengeComplete.textContent = challengeState.completed ? 'Schon geschafft' : 'Abgehakt!';
+    }
+  }
+
+  function saveChallengeCompletion(completed) {
+    try {
+      localStorage.setItem(
+        challengeStorageKey,
+        JSON.stringify({ date: challengeState.todayKey, completed: Boolean(completed) })
+      );
+    } catch (error) {
+      console.error('Challenge konnte nicht gespeichert werden', error);
+    }
+  }
+
+  function markChallengeCompleted(message) {
+    challengeState.completed = true;
+    saveChallengeCompletion(true);
+    updateChallengeStatus(message || 'Challenge fuer heute abgehakt. Muito bem!', 'is-good');
+    if (elements.challengeComplete) {
+      elements.challengeComplete.disabled = true;
+      elements.challengeComplete.textContent = 'Schon geschafft';
+    }
+  }
+
+  function setupDailyChallenge() {
+    if (!elements.challengeContent) {
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(challengeStorageKey);
+      if (raw) {
+        const stored = JSON.parse(raw);
+        if (stored && stored.date === challengeState.todayKey) {
+          challengeState.completed = Boolean(stored.completed);
+        }
+      }
+    } catch (error) {
+      console.error('Challenge konnte nicht geladen werden', error);
+    }
+    renderDailyChallenge();
+    elements.challengeRefresh?.addEventListener('click', () => {
+      challengeState.seedOffset += 1;
+      challengeState.completed = false;
+      saveChallengeCompletion(false);
+      if (elements.challengeComplete) {
+        elements.challengeComplete.disabled = false;
+        elements.challengeComplete.textContent = 'Abgehakt!';
+      }
+      renderDailyChallenge();
+      updateChallengeStatus('Neue Aufgabe bereit. Viel Erfolg!', '');
+    });
+    elements.challengeComplete?.addEventListener('click', () => {
+      markChallengeCompleted('Challenge fuer heute abgehakt. Muito bem!');
+    });
+  }
+
+  const originalSetupPlanner = typeof window.setupPlanner === 'function' ? window.setupPlanner : null;
+  window.setupPlanner = function setupPlannerOverride() {
+    if (originalSetupPlanner) {
+      try {
+        originalSetupPlanner();
+      } catch (error) {
+        console.warn('Original Study Buddy wurde uebersprungen:', error);
+      }
+    }
+    setupSpeakLab();
+    setupPronunciationTrainer();
+    setupDailyChallenge();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      primeSpeechSynthesis();
+    });
+  } else {
+    primeSpeechSynthesis();
+  }
+})();

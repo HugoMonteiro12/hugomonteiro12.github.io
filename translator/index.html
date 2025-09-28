@@ -58,6 +58,47 @@
           <p class="speak-lab__status" id="speakStatus" aria-live="polite"></p>
         </div>
       </section>
+      <section class="card" id="pronunciationTrainer">
+        <div class="section-header">
+          <h2>Wiederhol-Trainer</h2>
+          <span class="section-subtitle">Hoere hin, sprich nach, vergleiche.</span>
+        </div>
+        <div class="trainer">
+          <div class="trainer__phrase">
+            <p class="trainer__portuguese" id="trainerPhrase"></p>
+            <p class="trainer__phonetic" id="trainerPhonetic"></p>
+            <p class="trainer__german" id="trainerGerman"></p>
+          </div>
+          <div class="trainer__actions">
+            <button id="trainerPlay" class="icon-button">Anhoeren</button>
+            <button id="trainerListen" class="primary-button">Aufnehmen</button>
+            <button id="trainerSkip" class="secondary-button">Neue Uebung</button>
+          </div>
+          <p class="trainer__status" id="trainerStatus" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="card" id="dailyChallenge">
+        <div class="section-header">
+          <h2>Heutige Challenge</h2>
+          <span class="section-subtitle" id="challengeSubtitle"></span>
+        </div>
+        <div class="challenge" id="challengeContent">
+          <p class="challenge__prompt" id="challengePrompt"></p>
+          <div class="challenge__details">
+            <p class="challenge__portuguese" id="challengePortuguese"></p>
+            <p class="challenge__phonetic" id="challengePhonetic"></p>
+            <p class="challenge__german" id="challengeGerman"></p>
+          </div>
+          <div class="challenge__options" id="challengeOptions"></div>
+          <button id="challengeAction" class="primary-button"></button>
+        </div>
+        <div class="challenge__footer">
+          <button id="challengeRefresh" class="icon-button">Andere Aufgabe</button>
+          <button id="challengeComplete" class="secondary-button">Abgehakt!</button>
+        </div>
+        <p class="challenge__status" id="challengeStatus" aria-live="polite"></p>
+      </section>
       <section class="card" id="favorites">
         <div class="section-header">
           <h2>Lieblingssätze</h2>
@@ -152,4 +193,3 @@
     <script src="script.js" defer></script>
   </body>
 </html>
-

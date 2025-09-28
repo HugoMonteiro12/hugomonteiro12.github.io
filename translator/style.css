@@ -225,6 +225,139 @@ textarea {
   font-weight: 600;
 }
 
+.trainer {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.trainer__phrase {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.trainer__portuguese {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.trainer__phonetic {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.trainer__german {
+  color: var(--muted);
+}
+
+.trainer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.trainer__status {
+  min-height: 1.2rem;
+  margin: 0;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.challenge {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.challenge__prompt {
+  margin: 0;
+  font-weight: 600;
+}
+
+.challenge__details {
+  display: grid;
+  gap: 0.3rem;
+  background: linear-gradient(135deg, rgba(108, 99, 255, 0.08), rgba(52, 211, 153, 0.12));
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+}
+
+.challenge__portuguese {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.challenge__phonetic {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.challenge__german {
+  color: var(--muted);
+}
+
+.challenge__options {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.challenge__option {
+  border: none;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  background: rgba(108, 99, 255, 0.12);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.challenge__option:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(108, 99, 255, 0.25);
+}
+
+.challenge__option.is-correct {
+  background: rgba(52, 211, 153, 0.25);
+}
+
+.challenge__option.is-incorrect {
+  background: rgba(231, 76, 60, 0.2);
+}
+
+.challenge__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.challenge__status {
+  margin: 0.4rem 0 0;
+  min-height: 1.2rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.trainer__status.is-good,
+.challenge__status.is-good {
+  color: var(--accent-green);
+}
+
+.trainer__status.is-warning,
+.challenge__status.is-warning {
+  color: #d97706;
+}
+
+.trainer__status.is-error,
+.challenge__status.is-error {
+  color: #e74c3c;
+}
+
+
+.is-hidden {
+  display: none !important;
+}
 .phrase-list {
   display: grid;
   gap: 0.75rem;
@@ -503,5 +636,3 @@ textarea {
     justify-content: center;
   }
 }
-
-
