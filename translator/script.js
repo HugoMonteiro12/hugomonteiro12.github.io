@@ -1322,16 +1322,62 @@ document.addEventListener('DOMContentLoaded', init);
       return null;
     }
     const voices = speechSynthesis.getVoices();
+    if (!voices.length) {
+      return cachedPortugueseVoice;
+    }
+    const normalize = (value) => (typeof value === 'string' ? value.toLowerCase() : '');
+    const scoreVoice = (voice) => {
+      const lang = normalize(voice.lang);
+      const name = normalize(voice.name);
+      if (!lang.startsWith('pt')) {
+        return 0;
+      }
+      if (lang === 'pt-pt' || lang === 'pt_pt') {
+        return 5;
+      }
+      if (lang.startsWith('pt-pt')) {
+        return 4;
+      }
+      if (name.includes('portugal')) {
+        return 3;
+      }
+      if (lang === 'pt') {
+        return 2;
+      }
+      return 1;
+    };
+    const scoredVoices = voices
+      .map((voice) => ({ voice, score: scoreVoice(voice) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return a.voice.name.localeCompare(b.voice.name);
+      });
+    if (!scoredVoices.length) {
+      if (cachedPortugueseVoice) {
+        const stillAvailable = voices.some(
+          (voice) => voice.lang === cachedPortugueseVoice.lang && voice.name === cachedPortugueseVoice.name,
+        );
+        if (stillAvailable) {
+          return cachedPortugueseVoice;
+        }
+      }
+      cachedPortugueseVoice = null;
+      return null;
+    }
     if (cachedPortugueseVoice) {
-      const stillAvailable = voices.some((voice) => voice.lang === cachedPortugueseVoice.lang && voice.name === cachedPortugueseVoice.name);
-      if (stillAvailable) {
+      const cachedEntry = scoredVoices.find(
+        (entry) => entry.voice.lang === cachedPortugueseVoice.lang && entry.voice.name === cachedPortugueseVoice.name,
+      );
+      if (cachedEntry && cachedEntry.score === scoredVoices[0].score) {
         return cachedPortugueseVoice;
       }
     }
-    cachedPortugueseVoice = voices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith('pt')) || null;
+    cachedPortugueseVoice = scoredVoices[0].voice;
     return cachedPortugueseVoice;
   }
-
   function speakPortugueseEnhanced(text) {
     if (!('speechSynthesis' in window)) {
       if (originalSpeakPortuguese) {
@@ -1972,4 +2018,3 @@ document.addEventListener('DOMContentLoaded', init);
     primeSpeechSynthesis();
   }
 })();
-
